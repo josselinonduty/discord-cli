@@ -66,6 +66,9 @@ export default class DiscordCLI {
         this.oauth2 = new OAuth2API(this.rest);
 
         this.app = express();
+        this.app.use(express.urlencoded({ extended: true }));
+        this.app.use(express.json());
+        this.app.use(express.static("static"));
     }
 
     public get redirectUri(): string {
@@ -176,7 +179,9 @@ export default class DiscordCLI {
                     reject("Invalid state parameter.");
                 }
 
-                res.send("You may now close this window.");
+                res.sendFile("callback.html", {
+                    root: "static",
+                });
                 resolve(code as string);
             });
         });
