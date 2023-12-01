@@ -1,7 +1,6 @@
 import { Command } from "commander";
 
 import client from "../modules/client.js";
-client.setupCLI();
 
 const program = new Command();
 

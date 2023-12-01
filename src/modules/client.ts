@@ -1,7 +1,7 @@
 import "./env.js";
-import CLI from "../lib/CLI.js";
+import DiscordCLI from "../lib/DiscordCLI.js";
 
-const client = new CLI({
+const client = new DiscordCLI({
     clientId: process.env.CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
     serverHost: process.env.SERVER_HOST,
