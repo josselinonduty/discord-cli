@@ -11,6 +11,13 @@ program
         await client.login();
     });
 
+program
+    .command("logout")
+    .description("Logout of Discord")
+    .action(async () => {
+        await client.logout();
+    });
+
 program.parse(process.argv);
 
 export default program;

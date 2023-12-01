@@ -233,4 +233,11 @@ export default class DiscordCLI {
             this.stopServer();
         }
     }
+
+    public async logout(): Promise<void> {
+        const hasToken = await this.hasTokens();
+
+        if (!hasToken) return;
+        this.deleteTokens();
+    }
 }
