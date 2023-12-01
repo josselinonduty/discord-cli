@@ -1,0 +1,16 @@
+node_modules
+*.tmp
+*.log
+logs
+tmp
+dist
+bin
+build
+
+.DS_Store
+.vscode
+*.backup
+*.old
+
+*.env
+env.*
