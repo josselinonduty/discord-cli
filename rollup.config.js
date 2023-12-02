@@ -3,8 +3,8 @@ import { defineConfig } from "rollup";
 export default defineConfig({
     input: "dist/setup.js",
     output: {
-        file: "bin/discord-cli.bundle.mjs",
-        format: "es",
+        file: "bin/discord-cli.js",
+        format: "cjs",
     },
     external: [
         "dotenv",
@@ -12,7 +12,7 @@ export default defineConfig({
         "node:path",
         "@discordjs/core",
         "@discordjs/rest",
-        "open",
+        "openurl",
         "keytar",
         "crypto",
         "express",

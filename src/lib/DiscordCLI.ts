@@ -3,11 +3,11 @@ import { Server } from "node:http";
 import { OAuth2API, RESTPostOAuth2AccessTokenResult } from "@discordjs/core";
 import { REST } from "@discordjs/rest";
 
-import open from "open";
 import keytar from "keytar";
 import { randomUUID } from "crypto";
 
 import express from "express";
+import { open } from "openurl";
 
 export interface CLIOptions {
     serverPort: number;
@@ -190,10 +190,7 @@ export default class DiscordCLI {
     }
 
     public async openBrowser(): Promise<void> {
-        await open(this.authorizationUrl, {
-            wait: false,
-            newInstance: true,
-        });
+        await open(this.authorizationUrl);
     }
 
     public static MAX_AWAIT_DELAY = 5 * 60 * 1000;
