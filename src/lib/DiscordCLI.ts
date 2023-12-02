@@ -3,67 +3,35 @@ import { Server } from "node:http";
 import { OAuth2API, RESTPostOAuth2AccessTokenResult } from "@discordjs/core";
 import { REST } from "@discordjs/rest";
 
-import keytar from "keytar";
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 
 import express from "express";
 import { open } from "openurl";
 
-export interface CLIOptions {
-    serverPort: number;
-    redirectPath: string;
-    clientId: string;
-    clientSecret: string;
-    serverHost?: string;
-    serverProtocol?: string;
+import ConfigManager from "./ConfigManager.js";
+
+export interface DiscordCLIOptions {
     scopes: string[];
 }
 
 export type CLICode = string;
 
-export const DISCORD_CLI_SERVICE = "discord-cli";
-
 export default class DiscordCLI {
-    private serverPort: number;
-    private redirectPath: string;
-    private clientId: string;
-    private clientSecret: string;
-    private serverHost: string;
-    private serverProtocol: string;
-    private scopes: string[];
+    private _configs: ConfigManager;
     private oauth2: OAuth2API;
     private rest: REST;
     private app: express.Express;
     private server: Server;
-    private state: string;
+    private _state: string;
 
-    constructor(options: CLIOptions) {
-        if (!options) throw new Error("options is required");
-
-        if (!options.serverPort) throw new Error("port is required");
-        this.serverPort = options.serverPort;
-
-        if (!options.redirectPath) throw new Error("callbackPath is required");
-        this.redirectPath = options.redirectPath;
-
-        if (!options.clientId) throw new Error("clientId is required");
-        this.clientId = options.clientId;
-
-        if (!options.clientSecret) throw new Error("clientSecret is required");
-        this.clientSecret = options.clientSecret;
-
-        this.serverHost = options.serverHost || "localhost";
-
-        this.serverProtocol = options.serverProtocol || "http";
-
-        if (!options.scopes) throw new Error("scopes is required");
-
-        this.scopes = options.scopes;
-
-        this.rest = new REST({ version: "10", authPrefix: "Bearer" }).setToken(
-            this.clientSecret
-        );
+    constructor(options: DiscordCLIOptions) {
+        this.rest = new REST({ version: "10", authPrefix: "Bearer" });
         this.oauth2 = new OAuth2API(this.rest);
+
+        this._configs = new ConfigManager();
+        this._configs.load({
+            scopes: options.scopes.join(" ") || undefined,
+        });
 
         this.app = express();
         this.app.use(express.urlencoded({ extended: true }));
@@ -71,33 +39,73 @@ export default class DiscordCLI {
         this.app.use(express.static("static"));
     }
 
+    public get configs(): ConfigManager {
+        return this._configs;
+    }
+
+    public set state(state: string) {
+        this._state = state;
+    }
+
+    public get state(): string {
+        return this._state;
+    }
+
+    public async setClientSecret(secret: string): Promise<void> {
+        if (!this.configs.id) {
+            throw new Error("Client ID must be set before client secret.");
+        }
+
+        this.rest = this.rest.setToken(secret);
+        this.oauth2 = new OAuth2API(this.rest);
+
+        await this.configs.setCredentials({
+            secret: secret,
+        });
+    }
+
     public get redirectUri(): string {
-        return `${this.serverProtocol}://${this.serverHost}:${
-            this.serverPort
-        }${path.join("/", this.redirectPath)}`;
+        if (
+            !this.configs.host ||
+            !this.configs.port ||
+            !this.configs.callback
+        ) {
+            throw new Error(
+                "Server must be configured before redirect URI can be generated."
+            );
+        }
+
+        return `${this.configs.protocol}://${this.configs.host}:${
+            this.configs.port
+        }${path.join("/", this.configs.callback)}`;
     }
 
     public get authorizationUrl(): string {
+        if (
+            !this.configs.id ||
+            !this.configs.host ||
+            !this.configs.port ||
+            !this.configs.callback ||
+            !this.configs.scopes
+        ) {
+            throw new Error(
+                "CLI must be configured before authorization URL can be generated."
+            );
+        }
+
         this.state = randomUUID();
 
         return this.oauth2.generateAuthorizationURL({
-            client_id: this.clientId,
+            client_id: this.configs.id,
             redirect_uri: this.redirectUri,
-            scope: this.scopes.join(" "),
+            scope: this.configs.scopes,
             response_type: "code",
             state: this.state,
         });
     }
 
     public async hasTokens(): Promise<boolean> {
-        const accessToken = await keytar.getPassword(
-            DISCORD_CLI_SERVICE,
-            "access"
-        );
-        const refreshToken = await keytar.getPassword(
-            DISCORD_CLI_SERVICE,
-            "refresh"
-        );
+        const { accessToken, refreshToken } = await this.configs.getTokens();
 
         return !!accessToken && !!refreshToken;
     }
@@ -105,46 +113,32 @@ export default class DiscordCLI {
     public async saveTokens(
         tokens: RESTPostOAuth2AccessTokenResult
     ): Promise<void> {
-        await keytar.setPassword(
-            DISCORD_CLI_SERVICE,
-            "access",
-            tokens.access_token
-        );
-        await keytar.setPassword(
-            DISCORD_CLI_SERVICE,
-            "refresh",
-            tokens.refresh_token
-        );
+        await this.configs.setTokens({
+            accessToken: tokens.access_token,
+            refreshToken: tokens.refresh_token,
+        });
     }
 
     public async deleteTokens(): Promise<void> {
-        await keytar.deletePassword(DISCORD_CLI_SERVICE, "access");
-        await keytar.deletePassword(DISCORD_CLI_SERVICE, "refresh");
+        await this.configs.deleteTokens();
     }
 
     public async getTokens(): Promise<{
         accessToken: string;
         refreshToken: string;
     }> {
-        const accessToken = await keytar.getPassword(
-            DISCORD_CLI_SERVICE,
-            "access"
-        );
-        const refreshToken = await keytar.getPassword(
-            DISCORD_CLI_SERVICE,
-            "refresh"
-        );
+        const { accessToken, refreshToken } = await this.configs.getTokens();
 
         return { accessToken, refreshToken };
     }
 
     public async refreshTokens(): Promise<RESTPostOAuth2AccessTokenResult> {
-        const { clientId, clientSecret } = this;
-        const { refreshToken } = await this.getTokens();
+        const { secret } = await this.configs.getCredentials();
+        const { refreshToken } = await this.configs.getTokens();
 
         const response = await this.oauth2.refreshToken({
-            client_id: clientId,
-            client_secret: clientSecret,
+            client_id: this.configs.id,
+            client_secret: secret,
             grant_type: "refresh_token",
             refresh_token: refreshToken,
         });
@@ -157,10 +151,16 @@ export default class DiscordCLI {
     public async exchangeCodeForTokens(
         code: CLICode
     ): Promise<RESTPostOAuth2AccessTokenResult> {
-        const { clientId, clientSecret } = this;
+        if (!this.configs.id) {
+            throw new Error(
+                "Client ID must be set before tokens can be exchanged."
+            );
+        }
+
+        const { secret } = await this.configs.getCredentials();
         const response = await this.oauth2.tokenExchange({
-            client_id: clientId,
-            client_secret: clientSecret,
+            client_id: this.configs.id,
+            client_secret: secret,
             grant_type: "authorization_code",
             code: code,
             redirect_uri: this.redirectUri,
@@ -169,9 +169,24 @@ export default class DiscordCLI {
         return response;
     }
 
-    public initializeServer(): Promise<CLICode> {
+    public async initializeServer(): Promise<CLICode> {
+        if (!this.configs.callback) {
+            throw new Error(
+                "Redirect path must be set before server can be initialized."
+            );
+        }
+
+        const { secret } = await this.configs.getCredentials();
+        if (!secret) {
+            throw new Error(
+                "Client secret must be set before server can be initialized."
+            );
+        }
+        this.rest = this.rest.setToken(secret);
+        this.oauth2 = new OAuth2API(this.rest);
+
         const promise = new Promise<CLICode>((resolve, reject) => {
-            this.app.get(path.join("/", this.redirectPath), (req, res) => {
+            this.app.get(path.join("/", this.configs.callback), (req, res) => {
                 const { code, state } = req.query;
 
                 if (this.state !== state) {
@@ -206,19 +221,29 @@ export default class DiscordCLI {
     }
 
     public startServer() {
-        this.server = this.app.listen(this.serverPort, () => {
+        if (!this.configs.host || !this.configs.port) {
+            throw new Error(
+                "Server must be configured before it can be started."
+            );
+        }
+
+        this.server = this.app.listen(this.configs.port, () => {
             console.log(
-                `[Auth] Server started (${this.serverProtocol}://${this.serverHost}:${this.serverPort})`
+                `[Auth] Server started (${this.configs.protocol}://${this.configs.host}:${this.configs.port})`
             );
         });
     }
 
     public stopServer() {
+        if (!this.server) {
+            throw new Error("Server must be started before it can be stopped.");
+        }
+
         this.server.close();
         this.server = null;
 
         console.log(
-            `[Auth] Server stopped (${this.serverProtocol}://${this.serverHost}:${this.serverPort})`
+            `[Auth] Server stopped (${this.configs.protocol}://${this.configs.host}:${this.configs.port})`
         );
     }
 
@@ -240,6 +265,6 @@ export default class DiscordCLI {
         const hasToken = await this.hasTokens();
 
         if (!hasToken) return;
-        this.deleteTokens();
+        await this.deleteTokens();
     }
 }
