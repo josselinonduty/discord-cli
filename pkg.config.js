@@ -1,4 +1,4 @@
-module.exports = {
+export default {
     scripts: ["bin/discord-cli.cjs"],
     assets: ["bin/discord-cli.cjs", "static/**/*"],
     targets: [
