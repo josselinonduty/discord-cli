@@ -8,9 +8,13 @@ import { randomUUID } from "node:crypto";
 import express from "express";
 import { open } from "openurl";
 
-import ConfigManager from "./ConfigManager.js";
+import ConfigManager, { DefaultConfigOptions } from "./ConfigManager.js";
 
 export interface DiscordCLIOptions {
+    host: string;
+    port: number;
+    protocol: string;
+    callback: string;
     scopes: string[];
 }
 
@@ -30,6 +34,10 @@ export default class DiscordCLI {
 
         this._configs = new ConfigManager();
         this._configs.load({
+            host: options.host || undefined,
+            port: options.port || undefined,
+            protocol: options.protocol || undefined,
+            callback: options.callback || undefined,
             scopes: options.scopes.join(" ") || undefined,
         });
 
@@ -41,6 +49,10 @@ export default class DiscordCLI {
 
     public get configs(): ConfigManager {
         return this._configs;
+    }
+
+    public config(data: Partial<DefaultConfigOptions>) {
+        this._configs.load(data);
     }
 
     public set state(state: string) {
