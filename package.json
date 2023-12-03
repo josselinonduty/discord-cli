@@ -13,9 +13,9 @@
         "bundle:prebuild": "mkdir -p bin && touch bin/package.json && echo '{\"type\": \"commonjs\"}' > bin/package.json",
         "bundle:build": "rollup --config rollup.config.js",
         "bundle:run": "node ./bin/discord-cli.js",
-        "bundle": "npm run bundle:prebuild && npm run bundle:build",
-        "package": "pkg --overwrite --compress Brotli --config pkg.config.cjs ./bin/discord-cli.js",
-        "release": "npm run build && npm run bundle && npm run package",
+        "bundle": "npm run bundle:prebuild && npm run bundle:build && npm run bundle:package",
+        "bundle:package": "pkg --overwrite --compress Brotli --config pkg.config.cjs ./bin/discord-cli.js",
+        "package": "npm run build && npm run bundle",
         "lint": "eslint ./src/**/*.ts",
         "clean": "rm -rf ./dist && rm -rf ./bin",
         "fix": "eslint --fix ./src/**/*.ts"
