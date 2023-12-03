@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import keytar from "keytar";
+import { merge } from "../utils/objects.js";
 
 export interface DiscordCredentials {
     secret: string;
@@ -201,17 +202,14 @@ export default class ConfigManager {
             this._write({});
         }
 
-        const data = fs.readFileSync(this._configPath);
+        const data = fs.readFileSync(this._configPath).toString();
 
-        if (!data) {
+        if (!data || data === "{}") {
             this._write(options);
         }
 
-        const config = JSON.parse(data.toString());
-        const newConfig = {
-            ...config,
-            ...options,
-        };
+        const config = JSON.parse(data);
+        const newConfig = merge(config, options);
 
         this._id = newConfig.id;
         this._host = newConfig.host;
@@ -219,5 +217,6 @@ export default class ConfigManager {
         this._protocol = newConfig.protocol;
         this._callback = newConfig.callback;
         this._scopes = newConfig.scopes;
+        this._write(newConfig);
     }
 }
