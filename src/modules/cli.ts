@@ -18,7 +18,26 @@ program
         await client.logout();
     });
 
-const config = program.command("config").description("Configure the client");
+const config = program
+    .command("config")
+    .description("Configure the client")
+    .option("-i, --id <id>", "Set Discord client ID")
+    .option("-s, --secret <secret>", "Set Discord client secret")
+    .option("-h, --host <host>", "Set CLI host")
+    .option("-p, --port <port>", "Set CLI port")
+    .option("-P, --protocol <protocol>", "Set CLI protocol")
+    .option("-c, --callback <url>", "Set CLI callback URL")
+    .option("-S, --scopes <scopes>", "Set Discord OAuth2 scopes")
+    .action(async (options) => {
+        await client.config({
+            id: options.id,
+            host: options.host,
+            port: options.port,
+            protocol: options.protocol,
+            callback: options.callback,
+            scopes: options.scopes,
+        });
+    });
 
 config
     .command("id")
