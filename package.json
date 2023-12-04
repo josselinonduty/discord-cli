@@ -10,7 +10,7 @@
         "build": "tsc -p tsconfig.json",
         "dist:start": "node ./dist/setup.js",
         "start": "npm run fix && npm run build && npm run dist:start",
-        "bundle:prebuild": "mkdir -p bin && cd bin && npm init -y",
+        "bundle:prebuild": "(mkdir bin || mkdir -p bin) && cd bin && npm init -y",
         "bundle:build": "rollup --config rollup.config.js",
         "bundle:run": "node ./bin/discord-cli.js",
         "bundle": "npm run bundle:prebuild && npm run bundle:build && npm run bundle:package",
