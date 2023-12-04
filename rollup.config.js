@@ -7,7 +7,6 @@ export default defineConfig({
         format: "cjs",
     },
     external: [
-        "dotenv",
         "commander",
         "node:path",
         "node:fs",
