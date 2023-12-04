@@ -1,4 +1,3 @@
-import path from "node:path";
 import { Server } from "node:http";
 import { OAuth2API, RESTPostOAuth2AccessTokenResult } from "@discordjs/core";
 import { REST } from "@discordjs/rest";
@@ -89,7 +88,11 @@ export default class DiscordCLI {
 
         return `${this.configs.protocol}://${this.configs.host}:${
             this.configs.port
-        }${path.join("/", this.configs.callback)}`;
+        }${
+            this.configs.callback.startsWith("/")
+                ? this.configs.callback
+                : "/" + this.configs.callback
+        }`;
     }
 
     public get authorizationUrl(): string {
@@ -198,17 +201,22 @@ export default class DiscordCLI {
         this.oauth2 = new OAuth2API(this.rest);
 
         const promise = new Promise<CLICode>((resolve, reject) => {
-            this.app.get(path.join("/", this.configs.callback), (req, res) => {
-                const { code, state } = req.query;
+            this.app.get(
+                this.configs.callback.startsWith("/")
+                    ? this.configs.callback
+                    : "/" + this.configs.callback,
+                (req, res) => {
+                    const { code, state } = req.query;
 
-                if (this.state !== state) {
-                    res.send("Invalid state parameter.");
-                    reject("Invalid state parameter.");
+                    if (this.state !== state) {
+                        res.send("Invalid state parameter.");
+                        reject("Invalid state parameter.");
+                    }
+
+                    res.send(callbackSuccessPage);
+                    resolve(code as string);
                 }
-
-                res.send(callbackSuccessPage);
-                resolve(code as string);
-            });
+            );
         });
 
         return promise;
