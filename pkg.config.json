@@ -1,6 +1,5 @@
 {
-    "scripts": ["bin/discord-cli.cjs"],
-    "assets": ["bin/discord-cli.cjs", "static/**/*"],
+    "scripts": "dist/**/*.js",
     "targets": [
         "node18-linux-x64",
         "node18-macos-x64",

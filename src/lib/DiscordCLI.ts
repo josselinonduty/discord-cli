@@ -9,6 +9,7 @@ import express from "express";
 import { open } from "openurl";
 
 import ConfigManager, { DefaultConfigOptions } from "./ConfigManager.js";
+import { page as callbackSuccessPage } from "../views/callback.js";
 
 export interface DiscordCLIOptions {
     host: string;
@@ -44,7 +45,6 @@ export default class DiscordCLI {
         this.app = express();
         this.app.use(express.urlencoded({ extended: true }));
         this.app.use(express.json());
-        this.app.use(express.static("static"));
     }
 
     public get configs(): ConfigManager {
@@ -206,9 +206,7 @@ export default class DiscordCLI {
                     reject("Invalid state parameter.");
                 }
 
-                res.sendFile("callback.html", {
-                    root: "static",
-                });
+                res.send(callbackSuccessPage);
                 resolve(code as string);
             });
         });
